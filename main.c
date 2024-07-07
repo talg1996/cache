@@ -285,6 +285,7 @@ void LRU(CacheLine* L1, CacheLine* L2, CacheLine* L3, unsigned int address) {
                      unsigned int storedTag = L3[index].tag;
                      oldL3Address = get_full_address(index, storedTag, L3_SIZE);
                      update_cache_L3(L3, oldL2Address);
+                    if(address!=oldL3Address)
                      moveToDram(oldL3Address);
                 }
              }
@@ -313,11 +314,11 @@ int main() {
 
     for (int i = 0; i < sizeof(test_addresses) / sizeof(test_addresses[0]); i++) {
         printf("\nAccessing Address: %08X\n", test_addresses[i]);
-        print_index_and_tag(test_addresses[i],L1_SIZE,"l1");
+      //  print_index_and_tag(test_addresses[i],L1_SIZE,"l1");
         full_catch_logic(L1, L2, L3, test_addresses[i]);
-        print_cache_values(L1, L1_SIZE, "L1");
-        print_cache_values(L2, L2_SIZE, "L2");
-        print_cache_values(L3, L3_SIZE, "L3");
+        //print_cache_values(L1, L1_SIZE, "L1");
+        //print_cache_values(L2, L2_SIZE, "L2");
+        //print_cache_values(L3, L3_SIZE, "L3");
         printf("Hits: %u, Misses: %u, Total Cycles: %u\n", hits, misses, cycles);
     }
 
