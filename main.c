@@ -2,18 +2,33 @@
 #include <stdlib.h>
 #include <math.h>  // For log2 function
 
-#define L1_SIZE (16 * 1024)  // 16KB
-#define L2_SIZE (32 * 1024)  // 32KB
-#define L3_SIZE (2 * 1024) // 2MB
+#define L1_SIZE (1 * 1024) 
+#define L2_SIZE (1* 1024)  
+#define L3_SIZE (1 * 1024) 
 #define BLOCK_SIZE 64  // Assuming block size is 64 bytes
 #define ADDRESS_BITS 32  // Assuming a 32-bit address space
 
+#define L1_cycels 1
+#define L2_cycels 2
+#define L3_cycels 3
+#define DRAM_Cycle 10
+
+//----------------------------------------------------------------//
+//Global Variables
 unsigned int hits = 0; //Sum all hits
 unsigned int misses = 0; // Sum all misses
 unsigned int total_commands = 0; //Sum all commands load and store
+unsigned int cycles = 0; //Sum all
+
+unsigned int oldL1Address;
+unsigned int oldL2Address;
+unsigned int oldL3Address;
+//end of global variables
+//----------------------------------------------------------------
 
 /// @brief This struct represents a cache line.
-typedef struct {
+typedef struct
+{
     int valid;        // Valid bit
     unsigned int tag; // Tag
 } CacheLine;
@@ -207,97 +222,80 @@ unsigned int get_full_address(int index, unsigned int tag, int cache_size) {
 
     return address;
 }
-
-
-void full_catch_logic(CacheLine* L1, CacheLine* L2, CacheLine* L3, unsigned int address) {
-    if (is_valid_bit_set(L1, address, L1_SIZE) == 0) {
-        printf("Miss L1 Valid=0 Address %08X. L1 was updated\n", address);
-        update_cache_L1(L1, address);
-        misses++;
-        return;
-    } else if (is_in_cache_L1(L1, address)) {
-        printf("Hit L1 Address %08X \n", address);
+void moveToDram(unsigned int address){
+    printf("moveToDram , %08x\n", address);
+}
+void hit_miss_finder(CacheLine *L1, CacheLine *L2, CacheLine *L3, unsigned int address)
+{
+    if (is_in_cache_L1(L1, address)==1)
+    {
+        printf("Hit on L1 for adress %08x\n", address);
         hits++;
-        return;
-    } else {
-        // If valid bit is set but tag mismatch, get the actual address from the cache and the check if L2 is valid ==0 then update l1 and l2
-        int index = (address >> (int)log2(BLOCK_SIZE)) & ((1 << (int)log2(L1_SIZE / BLOCK_SIZE)) - 1);
-        unsigned int storedTag = L1[index].tag;
-        unsigned int currentL1Address = get_full_address(index, storedTag, L1_SIZE);
-        printf("The current address is: %08X, but the tag matches for address: %08X\n", address, currentL1Address);
-        if(is_valid_bit_set(L2,currentL1Address,L2_SIZE)==0) {
-            update_cache_L2(L2, currentL1Address);
-            update_cache_L1(L1,address);
-            return;
-        }
-        else if (is_in_cache_L2(L2, address)) {
-            printf("Hit L2 Address %08X. Swapping L1 and L2 contents.\n", address);
-            
-            
-            // Swap contents: Move current L2 data to L1 and move current L1 data to L2
-            update_cache_L1(L1, address);
-            update_cache_L2(L2, currentL1Address);
-            
-            hits++; // Count this as a hit since we accessed data from L2
-        }else{
-            printf("Miss L2 Address %08X.check on L3 \n", address);
-            if(is_valid_bit_set(L3,address,L3_SIZE)==0){
-                misses++;
-                int index1 = (address >> (int)log2(BLOCK_SIZE)) & ((1 << (int)log2(L1_SIZE / BLOCK_SIZE)) - 1);
-                unsigned int storedTag1 = L1[index1].tag;
-                unsigned int currentL1Address = get_full_address(index1, storedTag1, L1_SIZE);
-        
-        int index = (address >> (int)log2(BLOCK_SIZE)) & ((1 << (int)log2(L2_SIZE / BLOCK_SIZE)) - 1);
-                unsigned int storedTag = L2[index].tag;
-                unsigned int currentL2Address = get_full_address(index, storedTag, L2_SIZE);
-             update_cache_L3(L3, currentL2Address);
-             update_cache_L2(L2, currentL1Address);
-             update_cache_L1(L1,address);
-             printf("Miss L3 Address %08X. L3 was updated\n", address);
-            }
-            else if (is_in_cache_L3(L3,address)){
-                printf("Hit L3 Address %08X. Swapping L1, L2 and L3 contents.\n", address);
-                 int index1 = (address >> (int)log2(BLOCK_SIZE)) & ((1 << (int)log2(L1_SIZE / BLOCK_SIZE)) - 1);
-                unsigned int storedTag1 = L1[index1].tag;
-                unsigned int currentL1Address = get_full_address(index1, storedTag1, L1_SIZE);
-        
-        int index = (address >> (int)log2(BLOCK_SIZE)) & ((1 << (int)log2(L2_SIZE / BLOCK_SIZE)) - 1);
-                unsigned int storedTag = L2[index].tag;
-                unsigned int currentL2Address = get_full_address(index, storedTag, L2_SIZE);
-             
-                // Swap contents: Move current L3 data to L2, current L2 data to L1 and move current L1 data to L3
-                update_cache_L3(L3, currentL2Address);
-                update_cache_L2(L2, currentL1Address);
-                update_cache_L1(L1, address);
-                hits++; // Count this as a hit since we accessed data from L3
-             
-            }
-            else{
-                printf("Miss L3 Address %08X. No hit in L3)\n", address);
-                misses++;
-                
-                printf("Hit L3 Address %08X. Swapping L1, L2 and L3 contents.\n", address);
-                 int index1 = (address >> (int)log2(BLOCK_SIZE)) & ((1 << (int)log2(L1_SIZE / BLOCK_SIZE)) - 1);
-                unsigned int storedTag1 = L1[index1].tag;
-                unsigned int currentL1Address = get_full_address(index1, storedTag1, L1_SIZE);
-        
-        int index = (address >> (int)log2(BLOCK_SIZE)) & ((1 << (int)log2(L2_SIZE / BLOCK_SIZE)) - 1);
-                unsigned int storedTag = L2[index].tag;
-                unsigned int currentL2Address = get_full_address(index, storedTag, L2_SIZE);
-             
-             int index3 = (address >> (int)log2(BLOCK_SIZE)) & ((1 << (int)log2(L2_SIZE / BLOCK_SIZE)) - 1);
-                unsigned int storedTag3 = L2[index3].tag;
-                unsigned int currentL3Address = get_full_address(index3, storedTag3, L3_SIZE); // store the L3 address to DRAM memory.
-
-             update_cache_L3(L3, currentL2Address);
-             update_cache_L2(L2, currentL1Address);
-             update_cache_L1(L1, address);
-             printf("address %08x is wrtie back to DRAM\n", currentL3Address);
-             }
-            
-        }
+        cycles += L1_cycels;
+    }
+    else if (is_in_cache_L2(L2, address)==1)
+    {
+        printf("Hit on L2 for adress %08x\n", address);
+        hits++;
+        cycles += L2_cycels;
+    }
+    else if (is_in_cache_L3(L3, address)==1)
+    {
+        printf("Hit on L3 for adress %08x\n", address);
+        hits++;
+        cycles += L3_cycels;
+    }
+    else
+    {
+        printf("Not found on cache. Upload form DRAM %08x\n", address);
+        misses++;
+        cycles += DRAM_Cycle;
     }
 }
+
+
+void LRU(CacheLine* L1, CacheLine* L2, CacheLine* L3, unsigned int address) {
+    if(is_valid_bit_set(L1, address,L1_SIZE)==0) {//If L1 was never writen then write.
+        update_cache_L1(L1, address);
+        return;
+    }
+    else
+    {
+        if(is_in_cache_L1(L1,address))// If tag is match
+            return;
+        else{// If tag is missmatch take the L1 value that should be move to L2.
+             int index = (address >> (int)log2(BLOCK_SIZE)) & ((1 << (int)log2(L1_SIZE / BLOCK_SIZE)) - 1);
+             unsigned int storedTag = L1[index].tag;
+             oldL1Address = get_full_address(index, storedTag, L1_SIZE);
+             update_cache_L1(L1, address); // Update L1, now should handle the old L1.
+             if (is_valid_bit_set(L2,oldL1Address,L2_SIZE)==0){// If valid is 0 for the old L1 address.
+                 update_cache_L2(L2, oldL1Address);
+             }
+             else{// If the place who now belong to the old L1 is capture. 
+             // Get the old L2 address and update L2.
+                int index = (oldL1Address >> (int)log2(BLOCK_SIZE)) & ((1 << (int)log2(L2_SIZE / BLOCK_SIZE)) - 1);
+                unsigned int storedTag = L2[index].tag;
+                oldL2Address = get_full_address(index, storedTag, L2_SIZE);
+                update_cache_L2(L2, oldL1Address);
+                if(is_valid_bit_set(L3,oldL2Address,L3_SIZE)==0){//If valid is 0 so old L2 have place
+                    update_cache_L3(L3, oldL2Address);
+                }
+                else{// L2 dont have place.
+                     int index = (oldL2Address >> (int)log2(BLOCK_SIZE)) & ((1 << (int)log2(L3_SIZE / BLOCK_SIZE)) - 1);
+                     unsigned int storedTag = L3[index].tag;
+                     oldL3Address = get_full_address(index, storedTag, L3_SIZE);
+                     update_cache_L3(L3, oldL2Address);
+                     moveToDram(oldL3Address);
+                }
+             }
+            }
+    }
+}
+
+    void full_catch_logic(CacheLine * L1, CacheLine * L2, CacheLine * L3, unsigned int address){
+        hit_miss_finder(L1, L2, L3, address);
+        LRU(L1, L2, L3, address);
+    }
 
 int main() {
 
@@ -305,38 +303,24 @@ int main() {
     CacheLine* L1 = initialize_cache(L1_SIZE);
     CacheLine* L2 = initialize_cache(L2_SIZE);
     CacheLine* L3 = initialize_cache(L3_SIZE);
-
-    // Example address
-    unsigned int address = 0x1A2B3C4D;
-
-    // Print index and tag before updates
-    print_index_and_tag(address, L1_SIZE, "L1");
-       print_index_and_tag(address, L2_SIZE, "L2");
-    print_index_and_tag(address, L3_SIZE, "L3");
-
-
-   
-
-    // Print cache contents and bit information
-    print_cache_values(L1, L1_SIZE, "L1");
-    print_cache_values(L2, L2_SIZE, "L2");
-    print_cache_values(L3, L3_SIZE, "L3");
-    print_cache_info(L1_SIZE, "L1");
-     print_cache_info(L2_SIZE, "L2");
-      print_cache_info(L3_SIZE, "L3");
-    
+     // Test addresses - designed to generate a mix of hits, misses, and evictions
+  unsigned int test_addresses[] = {
+    0x1A2B3C00,0x1A2B3C00,0x0A2B3C00,0x0A2B3C00,0x1A2B3C00,0x2A2B3C00,0x0A2B3C00,0x3A2B3C00,
+     0x1A2B3C00,0x1A2B3C00,0x0A2B3C00,0x0A2B3C00,0x1A2B3C00,0x2A2B3C00,0x0A2B3C00,0x3A2B3C00
+};
 
 
 
-      
+    for (int i = 0; i < sizeof(test_addresses) / sizeof(test_addresses[0]); i++) {
+        printf("\nAccessing Address: %08X\n", test_addresses[i]);
+        print_index_and_tag(test_addresses[i],L1_SIZE,"l1");
+        full_catch_logic(L1, L2, L3, test_addresses[i]);
+        print_cache_values(L1, L1_SIZE, "L1");
+        print_cache_values(L2, L2_SIZE, "L2");
+        print_cache_values(L3, L3_SIZE, "L3");
+        printf("Hits: %u, Misses: %u, Total Cycles: %u\n", hits, misses, cycles);
+    }
 
 
-
-    // Free allocated memory
-    free(L1);
-    free(L2);
-    free(L3);
-    printf("test2\n");
-
-    return 0;
+return 0;
 }
