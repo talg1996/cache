@@ -3,8 +3,8 @@
 #include <math.h>  // For log2 function
 
 #define L1_SIZE (1 * 1024) 
-#define L2_SIZE (1* 1024)  
-#define L3_SIZE (1 * 1024) 
+#define L2_SIZE (16* 1024)  
+#define L3_SIZE (1024 * 1024*2) 
 #define BLOCK_SIZE 64  // Assuming block size is 64 bytes
 #define ADDRESS_BITS 32  // Assuming a 32-bit address space
 
@@ -12,6 +12,12 @@
 #define L2_cycels 2
 #define L3_cycels 3
 #define DRAM_Cycle 10
+
+#define A 0x1A2B3C00
+#define B 0xCA1B3C00
+#define C 0x3A2B3C00
+#define D 0x2A2B3C00
+#define E 0xCA1B2C00
 
 //----------------------------------------------------------------//
 //Global Variables
@@ -62,6 +68,16 @@ void update_cache(CacheLine* cache, unsigned int address, int cache_size) {
 
     cache[index].valid = 1;
     cache[index].tag = tag;
+}
+
+void reset_cache(CacheLine* cache, unsigned int address, int cache_size) {
+    int index_bits = (int)log2(cache_size / BLOCK_SIZE);
+    int index_mask = (1 << index_bits) - 1;
+    int index = (address >> (int)log2(BLOCK_SIZE)) & index_mask;
+    unsigned int tag = address >> (index_bits + (int)log2(BLOCK_SIZE));
+
+    cache[index].valid = 0;
+    cache[index].tag = 0;
 }
 
 
@@ -178,6 +194,7 @@ void print_cache_values(CacheLine* cache, int cache_size, const char* cache_name
     printf("%s Cache Contents:\n", cache_name);
     printf("Index | Valid | Tag\n");
     for (int i = 0; i < num_lines; i++) {
+        if(cache[i].valid!=0)
         printf("%5d | %5d | %08X\n", i, cache[i].valid, cache[i].tag);
     }
 }
@@ -255,6 +272,7 @@ void hit_miss_finder(CacheLine *L1, CacheLine *L2, CacheLine *L3, unsigned int a
 
 
 void LRU(CacheLine* L1, CacheLine* L2, CacheLine* L3, unsigned int address) {
+    
     if(is_valid_bit_set(L1, address,L1_SIZE)==0) {//If L1 was never writen then write.
         update_cache_L1(L1, address);
         return;
@@ -291,6 +309,12 @@ void LRU(CacheLine* L1, CacheLine* L2, CacheLine* L3, unsigned int address) {
              }
             }
     }
+    if(is_in_cache_L2(L2,address)){
+        reset_cache(L2, address,L2_SIZE);
+}
+if(is_in_cache_L3(L3,address)){
+        reset_cache(L3, address,L3_SIZE);
+}
 }
 
     void full_catch_logic(CacheLine * L1, CacheLine * L2, CacheLine * L3, unsigned int address){
@@ -305,23 +329,32 @@ int main() {
     CacheLine* L2 = initialize_cache(L2_SIZE);
     CacheLine* L3 = initialize_cache(L3_SIZE);
      // Test addresses - designed to generate a mix of hits, misses, and evictions
-  unsigned int test_addresses[] = {
-    0x1A2B3C00,0x1A2B3C00,0x0A2B3C00,0x0A2B3C00,0x1A2B3C00,0x2A2B3C00,0x0A2B3C00,0x3A2B3C00,
-     0x1A2B3C00,0x1A2B3C00,0x0A2B3C00,0x0A2B3C00,0x1A2B3C00,0x2A2B3C00,0x0A2B3C00,0x3A2B3C00
+
+unsigned int test_addresses[] = {
+    B, A, C, E, D,
+    B, A, D, E, C,
+    A, D, E, C, B,
+    E, C, A, D, B
 };
+
+
+
 
 
 
     for (int i = 0; i < sizeof(test_addresses) / sizeof(test_addresses[0]); i++) {
         printf("\nAccessing Address: %08X\n", test_addresses[i]);
-      //  print_index_and_tag(test_addresses[i],L1_SIZE,"l1");
+        print_index_and_tag(test_addresses[i],L1_SIZE,"l1");
+        print_index_and_tag(test_addresses[i],L2_SIZE,"l2");
+        print_index_and_tag(test_addresses[i],L3_SIZE,"l3");
+
         full_catch_logic(L1, L2, L3, test_addresses[i]);
-        //print_cache_values(L1, L1_SIZE, "L1");
-        //print_cache_values(L2, L2_SIZE, "L2");
-        //print_cache_values(L3, L3_SIZE, "L3");
+        print_cache_values(L1, L1_SIZE, "L1");
+       print_cache_values(L2, L2_SIZE, "L2");
+       print_cache_values(L3, L3_SIZE, "L3");
         printf("Hits: %u, Misses: %u, Total Cycles: %u\n", hits, misses, cycles);
     }
-
+printf("Total hits: %u, Misses: %u, Total Cycles:%u\n",hits, misses, cycles);
 
 return 0;
 }
