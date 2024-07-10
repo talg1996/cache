@@ -2,16 +2,16 @@
 #include <stdlib.h>
 #include <math.h>  // For log2 function
 
-#define L1_SIZE (1020400 * 1024) 
-#define L2_SIZE (1600* 1024)  
-#define L3_SIZE (1024 * 1024*2) 
+#define L1_SIZE (16 * 1024) //16KB
+#define L2_SIZE (32* 1024)  //32KB
+#define L3_SIZE (1024 * 1024*2) //2MB
 #define BLOCK_SIZE 64  // Assuming block size is 64 bytes
 #define ADDRESS_BITS 32  // Assuming a 32-bit address space
 
-#define L1_cycels 1
-#define L2_cycels 2
-#define L3_cycels 3
-#define DRAM_Cycle 10
+#define L1_cycels 1 //L1 acces time in cycels
+#define L2_cycels 2 //L2 acces time in cycels
+#define L3_cycels 3 //L3 acces time in cycels
+#define DRAM_Cycle 10 //DRAM access time in cycels
 
 #define A 0x1A2B3C00
 #define B 0xCA1B3C00
