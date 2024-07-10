@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <math.h>  // For log2 function
 
-#define L1_SIZE (1 * 1024) 
-#define L2_SIZE (16* 1024)  
+#define L1_SIZE (1020400 * 1024) 
+#define L2_SIZE (1600* 1024)  
 #define L3_SIZE (1024 * 1024*2) 
 #define BLOCK_SIZE 64  // Assuming block size is 64 bytes
 #define ADDRESS_BITS 32  // Assuming a 32-bit address space
@@ -309,12 +309,14 @@ void LRU(CacheLine* L1, CacheLine* L2, CacheLine* L3, unsigned int address) {
              }
             }
     }
+    
     if(is_in_cache_L2(L2,address)){
         reset_cache(L2, address,L2_SIZE);
-}
-if(is_in_cache_L3(L3,address)){
+    }   
+
+    if(is_in_cache_L3(L3,address)){
         reset_cache(L3, address,L3_SIZE);
-}
+    }
 }
 
     void full_catch_logic(CacheLine * L1, CacheLine * L2, CacheLine * L3, unsigned int address){
@@ -354,7 +356,7 @@ unsigned int test_addresses[] = {
        print_cache_values(L3, L3_SIZE, "L3");
         printf("Hits: %u, Misses: %u, Total Cycles: %u\n", hits, misses, cycles);
     }
-printf("Total hits: %u, Misses: %u, Total Cycles:%u\n",hits, misses, cycles);
+printf("Totssal hits: %u, Misses: %u, Total Cycles:%u\n",hits, misses, cycles);
 
 return 0;
 }
